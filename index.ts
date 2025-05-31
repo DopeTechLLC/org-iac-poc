@@ -20,54 +20,52 @@ import * as aws from "@pulumi/aws";
 import usersConfig from "./config/users";
 import policiesConfig from "./config/policies";
 
+// Import configurations
+import organizationConfig from "./config/organization";
+import ouConfig from "./config/organizationalUnits";
+import accountsConfig from "./config/accounts";
+import rolesConfig from "./config/roles";
+import groupsConfig from "./config/groups";
+
 // =========================================
 // AWS Organization
 // Create the root organization and OUs
 // =========================================
 
 // Create the root organization
-const organization = createOrganization("dopetech-org", {
-    awsServiceAccessPrincipals: [
-        "cloudtrail.amazonaws.com",
-        "config.amazonaws.com",
-        "sso.amazonaws.com"
-    ],
-    enabledPolicyTypes: [
-        "SERVICE_CONTROL_POLICY",
-        "TAG_POLICY"
-    ],
-    featureSet: "ALL"
+const organization = createOrganization(organizationConfig.name, {
+    awsServiceAccessPrincipals: organizationConfig.orgArgs.awsServiceAccessPrincipals,
+    enabledPolicyTypes: organizationConfig.orgArgs.awsManagedPolicyTypes,
+    featureSet: organizationConfig.orgArgs.featureSet
 });
 
 // Create Organizational Units
-const productionOU = createOrganizationalUnit("production", {
-    name: "Production",
-    parentId: organization.roots[0].id,
-    tags: {
-        Environment: "Production",
-        ManagedBy: "Pulumi",
-        Team: "Platform"
-    }
-});
+const organizationalUnits = new Map();
 
-const stagingOU = createOrganizationalUnit("staging", {
-    name: "Staging",
-    parentId: organization.roots[0].id,
-    tags: {
-        Environment: "Staging",
-        ManagedBy: "Pulumi",
-        Team: "Platform"
-    }
-});
+// Function to recursively create OUs
+const createOUs = (ouDef: any, parentId: Input<string>) => {
+    const ou = createOrganizationalUnit(ouDef.name, {
+        name: ouDef.name,
+        parentId,
+        tags: {
+            Environment: ouDef.name,
+            ManagedBy: "Pulumi",
+            Team: "Platform"
+        }
+    });
+    organizationalUnits.set(ouDef.name, ou);
 
-const sandboxOU = createOrganizationalUnit("sandbox", {
-    name: "Sandbox",
-    parentId: organization.roots[0].id,
-    tags: {
-        Environment: "Sandbox",
-        ManagedBy: "Pulumi",
-        Team: "Platform"
+    // Recursively create child OUs if they exist
+    if (ouDef.children) {
+        Object.values(ouDef.children).forEach((childOu: any) => {
+            createOUs(childOu, ou.id);
+        });
     }
+};
+
+// Create all OUs from config
+Object.values(ouConfig).forEach((ouDef: any) => {
+    createOUs(ouDef, organization.roots[0].id);
 });
 
 // =========================================
@@ -94,7 +92,7 @@ const productionSCPOptions: SCPOptions = {
             Resource: "*"
         }]
     },
-    targetId: productionOU.id,
+    targetId: organizationalUnits.get("production")?.id,
     tags: {
         Environment: "Production",
         ManagedBy: "Pulumi",
@@ -122,7 +120,7 @@ const sandboxSCPOptions: SCPOptions = {
             Resource: "*"
         }]
     },
-    targetId: sandboxOU.id,
+    targetId: organizationalUnits.get("sandbox")?.id,
     tags: {
         Environment: "Sandbox",
         ManagedBy: "Pulumi",
@@ -208,111 +206,103 @@ for (const policy of policiesConfig.managedPolicies || []) {
     managedPolicies.set(policy.name, result);
 }
 
-// Create production policies
-const prodPolicies = new Map();
-for (const policy of policiesConfig.prod || []) {
-    const result = createPolicy({
-        name: policy.name,
-        type: PolicyType.IAM,
-        environment: PolicyEnvironment.PROD,
-        description: `Production environment policy: ${policy.name}`,
-        document: {
-            Version: "2012-10-17" as const,
-            Statement: policy.document.Statement.map(stmt => ({
-                ...stmt,
-                Effect: stmt.Effect as "Allow" | "Deny",
-                Condition: stmt.Condition ? stmt.Condition as unknown as aws.iam.Conditions : undefined
-            })) as aws.iam.PolicyStatement[]
-        },
-        path: "/env/prod/",
-        tags: {
-            Environment: "prod",
-            ManagedBy: "pulumi"
-        }
-    });
-    prodPolicies.set(policy.name, result);
-}
+// Create environment-specific policies
+const createEnvironmentPolicies = (policies: any[], environment: PolicyEnvironment) => {
+    const policyMap = new Map();
+    for (const policy of policies || []) {
+        const result = createPolicy({
+            name: policy.name,
+            type: PolicyType.IAM,
+            environment: environment,
+            description: `${environment} environment policy: ${policy.name}`,
+            document: {
+                Version: "2012-10-17" as const,
+                Statement: policy.document.Statement.map((stmt: { Effect: string; Condition?: any }) => ({
+                    ...stmt,
+                    Effect: stmt.Effect as "Allow" | "Deny",
+                    Condition: stmt.Condition ? stmt.Condition as unknown as aws.iam.Conditions : undefined
+                })) as aws.iam.PolicyStatement[]
+            },
+            path: `/env/${environment.toLowerCase()}/`,
+            tags: {
+                Environment: environment.toLowerCase(),
+                ManagedBy: "pulumi"
+            }
+        });
+        policyMap.set(policy.name, result);
+    }
+    return policyMap;
+};
 
-// Create staging policies
-const stagingPolicies = new Map();
-for (const policy of policiesConfig.staging || []) {
-    const result = createPolicy({
-        name: policy.name,
-        type: PolicyType.IAM,
-        environment: PolicyEnvironment.STAGING,
-        description: `Staging environment policy: ${policy.name}`,
-        document: {
-            Version: "2012-10-17" as const,
-            Statement: policy.document.Statement.map(stmt => ({
-                ...stmt,
-                Effect: stmt.Effect as "Allow" | "Deny",
-                Condition: stmt.Condition ? stmt.Condition as unknown as aws.iam.Conditions : undefined
-            })) as aws.iam.PolicyStatement[]
-        },
-        path: "/env/staging/",
-        tags: {
-            Environment: "staging",
-            ManagedBy: "pulumi"
-        }
-    });
-    stagingPolicies.set(policy.name, result);
-}
-
-// Create sandbox policies
-const sandboxPolicies = new Map();
-for (const policy of policiesConfig.sandbox1 || []) {
-    const result = createPolicy({
-        name: policy.name,
-        type: PolicyType.IAM,
-        environment: PolicyEnvironment.SANDBOX1,
-        description: `Sandbox environment policy: ${policy.name}`,
-        document: {
-            Version: "2012-10-17" as const,
-            Statement: policy.document.Statement.map(stmt => ({
-                ...stmt,
-                Effect: stmt.Effect as "Allow" | "Deny",
-                Condition: stmt.Condition ? stmt.Condition as unknown as aws.iam.Conditions : undefined
-            })) as aws.iam.PolicyStatement[]
-        },
-        path: "/env/sandbox/",
-        tags: {
-            Environment: "sandbox",
-            ManagedBy: "pulumi"
-        }
-    });
-    sandboxPolicies.set(policy.name, result);
-}
+const prodPolicies = createEnvironmentPolicies(policiesConfig.prod, PolicyEnvironment.PROD);
+const stagingPolicies = createEnvironmentPolicies(policiesConfig.staging, PolicyEnvironment.STAGING);
+const sandboxPolicies = createEnvironmentPolicies(policiesConfig.sandbox1, PolicyEnvironment.SANDBOX1);
 
 // =========================================
 // IAM Groups
 // Create groups and attach policies
 // =========================================
 
-// Extract unique groups from user configurations
-const uniqueGroups = [...new Set(usersConfig.flatMap(user => user.groups))];
+// Create groups from config
 const groups = new Map();
-
-// Create groups and attach relevant policies
-for (const groupName of uniqueGroups) {
-    const managedPolicyArns: string[] = [];
-    
-    // Determine which policies to attach based on group name
-    if (groupName.startsWith('prod-')) {
-        managedPolicyArns.push(prodPolicies.get('prod-restricted-access').arn);
-    }
-    if (groupName.startsWith('qa-')) {
-        managedPolicyArns.push(stagingPolicies.get('staging-access').arn);
-    }
-    if (groupName.startsWith('sandbox1-')) {
-        managedPolicyArns.push(sandboxPolicies.get('sandbox1-full-access').arn);
-    }
-
-    const group = createIamGroup(groupName, {
-        path: "/groups/",
-        managedPolicyArns
+for (const groupConfig of groupsConfig) {
+    const group = createIamGroup(groupConfig.name, {
+        path: "/groups/"
     });
     
-    groups.set(groupName, group);
+    groups.set(groupConfig.name, group);
+}
+
+// =========================================
+// IAM Roles
+// Create roles for different OUs
+// =========================================
+
+// Create roles from config
+const roles = new Map();
+for (const [ouName, ouRoles] of Object.entries(rolesConfig)) {
+    for (const roleConfig of ouRoles) {
+        // Create assume role policy for IAM users
+        const assumeRolePolicy = {
+            Version: "2012-10-17",
+            Statement: [{
+                Effect: "Allow",
+                Principal: {
+                    AWS: "*"  // This will be restricted by the trust relationship
+                },
+                Action: "sts:AssumeRole",
+                Condition: {
+                    StringEquals: {
+                        "aws:PrincipalType": "User"
+                    }
+                }
+            }]
+        };
+
+        // Create the role
+        const role = new aws.iam.Role(`${roleConfig.name}`, {
+            name: roleConfig.name,
+            description: roleConfig.description,
+            assumeRolePolicy: JSON.stringify(assumeRolePolicy),
+            tags: {
+                Environment: ouName,
+                ManagedBy: "pulumi"
+            }
+        });
+
+        // Attach managed policies to the role
+        roleConfig.policyArns.forEach((policyArn, index) => {
+            new aws.iam.RolePolicyAttachment(
+                `${roleConfig.name}-policy-${index}`,
+                {
+                    role: role.name,
+                    policyArn: policyArn
+                }
+            );
+        });
+
+        roles.set(roleConfig.name, role);
+    }
 }
 
 // =========================================
@@ -320,7 +310,7 @@ for (const groupName of uniqueGroups) {
 // Create users and establish access
 // =========================================
 
-// Create users and establish their access patterns
+// Create users from config
 for (const user of usersConfig) {
     const iamUser = createIamUser(user.username, {
         name: user.username,
@@ -333,15 +323,7 @@ for (const user of usersConfig) {
         forceDestroy: true
     });
 
-    // Create group memberships
-    for (const groupName of user.groups) {
-        new aws.iam.UserGroupMembership(`${user.username}-${groupName}`, {
-            user: iamUser.name,
-            groups: [groupName]
-        });
-    }
-
-    // Attach managed policies if specified
+    // If user has direct managed policies, attach them
     if (user.managedPolicies) {
         for (const policyName of user.managedPolicies) {
             const policy = managedPolicies.get(policyName);
@@ -352,6 +334,62 @@ for (const user of usersConfig) {
                 });
             }
         }
+    } else {
+        // For users without direct policies, create role assignments based on their groups
+        for (const groupName of user.groups) {
+            let roleName: string | undefined;
+            
+            // Map group names to corresponding roles
+            if (groupName === 'prod-readonly') {
+                roleName = 'prod-system-role';
+            } else if (groupName === 'qa-admin') {
+                roleName = 'qa-admin-role';
+            } else if (groupName === 'sandbox1-limited') {
+                roleName = 'sandbox1-limited-role';
+            } else if (groupName === 'sandbox2-everyone') {
+                roleName = 'sandbox2-everyone-role';
+            }
+
+            if (roleName) {
+                const role = roles.get(roleName);
+                if (role) {
+                    // Create a policy that allows the user to assume the role
+                    const assumeRolePolicy = {
+                        Version: "2012-10-17",
+                        Statement: [{
+                            Effect: "Allow",
+                            Action: "sts:AssumeRole",
+                            Resource: role.arn
+                        }]
+                    };
+
+                    // Attach the assume role policy to the user
+                    new aws.iam.UserPolicy(`${user.username}-assume-${roleName}`, {
+                        user: iamUser.name,
+                        policy: JSON.stringify(assumeRolePolicy)
+                    });
+                }
+            }
+        }
+    }
+}
+
+// =========================================
+// AWS Accounts
+// Create accounts in respective OUs
+// =========================================
+
+// Create accounts from config
+const accounts = new Map();
+for (const [ouName, ouAccounts] of Object.entries(accountsConfig)) {
+    for (const accountConfig of ouAccounts) {
+        const account = new aws.organizations.Account(`${accountConfig.name}-account`, {
+            email: accountConfig.email,
+            name: accountConfig.name,
+            parentId: organizationalUnits.get(ouName)?.id,
+            roleName: "OrganizationAccountAccessRole"
+        });
+        accounts.set(accountConfig.name, account);
     }
 }
 
@@ -362,11 +400,9 @@ for (const user of usersConfig) {
 
 export const organizationId = organization.id;
 export const organizationArn = organization.arn;
-export const organizationalUnits = {
-    production: productionOU.id,
-    staging: stagingOU.id,
-    sandbox: sandboxOU.id
-};
+export const organizationalUnitsMap = Object.fromEntries(
+    Array.from(organizationalUnits.entries()).map(([name, ou]) => [name, ou.id])
+);
 
 export const managedPolicyArns = Object.fromEntries(
     Array.from(managedPolicies.entries()).map(([name, policy]) => [name, policy.arn])
@@ -380,4 +416,12 @@ export const environmentPolicyArns = {
 
 export const groupArns = Object.fromEntries(
     Array.from(groups.entries()).map(([name, group]) => [name, group.arn])
+);
+
+export const accountIds = Object.fromEntries(
+    Array.from(accounts.entries()).map(([name, account]) => [name, account.id])
+);
+
+export const roleArns = Object.fromEntries(
+    Array.from(roles.entries()).map(([name, role]) => [name, role.arn])
 );
