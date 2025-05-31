@@ -1,2 +1,3 @@
-export * from "./factory";
+export * from "./cognitoFactory";
+export * from "./googleSSOFactory";
 export * from "./types"; 
