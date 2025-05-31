@@ -1,10 +1,33 @@
-name: org-demo
-description: A minimal AWS TypeScript Pulumi program
+name: aws-org-infrastructure
+description: AWS Organization Infrastructure as Code with multi-stack architecture
 runtime:
   name: nodejs
   options:
     packagemanager: yarn
+main: ./stacks/foundation
 config:
   pulumi:tags:
     value:
       pulumi:template: aws-typescript
+      component: aws-organization
+      team: platform
+      managedBy: pulumi
+stacks:
+  foundation: # Foundation stack for organization-wide resources
+    description: AWS Organization foundation components (Organization, OUs, SCPs, Accounts)
+    main: ./stacks/foundation
+  prod: # Production environment stack
+    description: Production environment IAM resources
+    main: ./stacks/environments/prod
+    dependencies:
+      - foundation
+  staging: # Staging environment stack
+    description: Staging environment IAM resources
+    main: ./stacks/environments/staging
+    dependencies:
+      - foundation
+  dev: # Development environment stack
+    description: Development environment IAM resources
+    main: ./stacks/environments/dev
+    dependencies:
+      - foundation

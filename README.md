@@ -1,61 +1,127 @@
- # AWS TypeScript Pulumi Template
+# AWS Organization Infrastructure as Code
 
- A minimal Pulumi template for provisioning AWS infrastructure using TypeScript. This template creates an Amazon S3 bucket and exports its name.
+This project manages AWS Organization infrastructure using Pulumi with a multi-stack architecture.
 
- ## Prerequisites
+## Architecture
 
- - Pulumi CLI (>= v3): https://www.pulumi.com/docs/get-started/install/
- - Node.js (>= 14): https://nodejs.org/
- - AWS credentials configured (e.g., via `aws configure` or environment variables)
+The codebase is organized into two types of stacks:
 
- ## Getting Started
+1. **Foundation Stack** - Creates the core organization-wide resources:
+   - AWS Organization
+   - Organizational Units (OUs)
+   - Service Control Policies (SCPs)
+   - Tag Policies
+   - AWS Accounts
 
- 1. Initialize a new Pulumi project:
+2. **Environment Stacks** - Create environment-specific resources:
+   - IAM Policies 
+   - IAM Groups
+   - IAM Roles
+   - IAM Users
 
-    ```bash
-    pulumi new aws-typescript
-    ```
+## Directory Structure
 
-    Follow the prompts to set your:
-    - Project name
-    - Project description
-    - AWS region (defaults to `us-east-1`)
+```
+├── stacks/
+│   ├── foundation/            # AWS Organization foundation
+│   │   └── index.ts
+│   └── environments/          # Environment-specific stacks
+│       ├── prod/
+│       │   └── index.ts       # Production environment resources
+│       ├── staging/
+│       │   └── index.ts       # Staging environment resources
+│       └── dev/
+│           └── index.ts       # Development environment resources
+├── shared/
+│   └── org-library/          # Shared utility functions
+├── config/                    # Configuration files
+│   ├── organization.ts
+│   ├── organizationalUnits.ts
+│   ├── accounts.ts
+│   ├── policies.ts
+│   ├── roles.ts
+│   ├── groups.ts
+│   └── users.ts
+└── Pulumi.yaml                # Project configuration
+```
 
- 2. Preview and deploy your infrastructure:
+## Deployment Order
 
-    ```bash
-    pulumi preview
-    pulumi up
-    ```
+The stacks must be deployed in the following order:
 
- 3. When you're finished, tear down your stack:
+1. Foundation stack
+2. Environment stacks (can be deployed in parallel)
 
-    ```bash
-    pulumi destroy
-    pulumi stack rm
-    ```
+### Deploying the Foundation Stack
 
- ## Project Layout
+```bash
+pulumi stack select foundation
+pulumi up
+```
 
- - `Pulumi.yaml` — Pulumi project and template metadata
- - `index.ts` — Main Pulumi program (creates an S3 bucket)
- - `package.json` — Node.js dependencies
- - `tsconfig.json` — TypeScript compiler options
+### Deploying Environment Stacks
 
- ## Configuration
+```bash
+# Deploy production environment
+pulumi stack select prod
+pulumi up
 
- | Key           | Description                             | Default     |
- | ------------- | --------------------------------------- | ----------- |
- | `aws:region`  | The AWS region to deploy resources into | `us-east-1` |
+# Deploy staging environment
+pulumi stack select staging
+pulumi up
 
- Use `pulumi config set <key> <value>` to customize configuration.
+# Deploy development environment
+pulumi stack select dev
+pulumi up
+```
 
- ## Next Steps
+## Stack Dependencies
 
- - Extend `index.ts` to provision additional resources (e.g., VPCs, Lambda functions, DynamoDB tables).
- - Explore [Pulumi AWSX](https://www.pulumi.com/docs/reference/pkg/awsx/) for higher-level AWS components.
- - Consult the [Pulumi documentation](https://www.pulumi.com/docs/) for more examples and best practices.
+- Environment stacks depend on the foundation stack for organization structure, OUs, and accounts
+- Environment stacks use `StackReference` to access foundation stack outputs
+- Each environment stack is independent of other environment stacks
 
- ## Getting Help
+## Data Flow
 
- If you encounter any issues or have suggestions, please open an issue in this repository.
+1. The foundation stack exports:
+   - Organization details (ID, Root ID, ARN)
+   - OU IDs and ARNs
+   - Account IDs and ARNs
+   - SCP and Tag Policy ARNs
+
+2. Environment stacks import these values using stack references:
+   ```typescript
+   const foundation = new pulumi.StackReference("foundation");
+   const organizationalUnits = foundation.getOutput("organizationalUnits");
+   ```
+
+## Configuration Files
+
+- **organization.ts** - Organization details and feature sets
+- **organizationalUnits.ts** - OU structure and hierarchy
+- **accounts.ts** - AWS account definitions and OU assignments
+- **policies.ts** - IAM policy definitions for all environments
+- **roles.ts** - IAM role definitions for each OU
+- **groups.ts** - IAM group definitions
+- **users.ts** - IAM user definitions and access patterns
+
+## Shared Utilities
+
+The `shared/org-library` directory contains helper functions for creating and managing AWS resources:
+
+- `organization` - AWS Organization creation
+- `organizationalUnit` - OU creation and management
+- `policy` - Policy creation (IAM, SCP, Tag)
+- `group` - IAM group management
+- `role` - IAM role management
+- `user` - IAM user management
+- `account` - AWS account management
+
+## Cross-Environment Access
+
+Users can be granted access to multiple environments through:
+1. Group memberships specific to each environment
+2. Cross-account role assumption using `sts:AssumeRole`
+3. Direct policy attachments
+
+Each environment stack creates only the resources relevant to that environment, ensuring clear separation and security boundaries.

@@ -1,6 +1,14 @@
 {
-    "name": "org-demo",
-    "main": "index.ts",
+    "name": "aws-org-infrastructure",
+    "version": "1.0.0",
+    "description": "AWS Organization Infrastructure as Code with multi-stack architecture",
+    "scripts": {
+        "build": "tsc",
+        "foundation": "pulumi up --stack foundation",
+        "prod": "pulumi up --stack prod",
+        "staging": "pulumi up --stack staging",
+        "dev": "pulumi up --stack dev"
+    },
     "devDependencies": {
         "@types/node": "^18",
         "typescript": "^5.0.0"
