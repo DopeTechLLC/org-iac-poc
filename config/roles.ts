@@ -17,18 +17,6 @@ const rolesConfig = {
       }
     }
   ],
-  production: [  // Alias for prod, to match environment name used in stacks
-    {
-      name: "prod-system-role",
-      description: "Role for system resources in prod OU. No user access.",
-      policyArns: ["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-      tags: {
-        Environment: "prod",
-        ManagedBy: "Pulumi",
-        Type: "System"
-      }
-    }
-  ],
   staging: [
     {
       name: "staging-access-role",
@@ -41,7 +29,7 @@ const rolesConfig = {
       }
     }
   ],
-  development: [
+  dev: [
     {
       name: "dev-limited-role",
       description: "Limited access role for development environment.",

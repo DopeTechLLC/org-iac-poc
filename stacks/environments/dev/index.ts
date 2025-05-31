@@ -32,7 +32,7 @@ const organizationalUnits = foundation.getOutput("organizationalUnits");
 const accounts = foundation.getOutput("accounts");
 
 // Environment name
-const environment = "development";
+const environment = "dev";
 
 // =========================================
 // Environment IAM Policies
@@ -113,7 +113,7 @@ for (const groupConfig of devGroupsConfig) {
 // =========================================
 
 // Filter roles for development environment
-const devRoles = rolesConfig['development'] || [];
+const devRoles = rolesConfig['dev'] || [];
 
 // Create roles from config
 const roles = new Map();
@@ -286,7 +286,7 @@ new aws.ssm.Parameter("dev-roles", {
     tags: {
         ManagedBy: "Pulumi",
         Component: "Roles",
-        Environment: "Development"
+        Environment: "Dev"
     }
 });
 
@@ -299,7 +299,7 @@ export default {
     // Development environment information
     environment: {
         name: environment,
-        ouId: organizationalUnits.apply(ous => ous.development?.id),
+        ouId: organizationalUnits.apply(ous => ous.dev?.id),
     },
 
     // Development roles

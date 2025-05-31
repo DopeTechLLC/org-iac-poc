@@ -32,7 +32,7 @@ const organizationalUnits = foundation.getOutput("organizationalUnits");
 const accounts = foundation.getOutput("accounts");
 
 // Environment name
-const environment = "production";
+const environment = "prod";
 
 // =========================================
 // Environment IAM Policies
@@ -113,7 +113,7 @@ for (const groupConfig of prodGroupsConfig) {
 // =========================================
 
 // Filter roles for production environment
-const prodRoles = rolesConfig['production'] || [];
+const prodRoles = rolesConfig['prod'] || [];
 
 // Create roles from config
 const roles = new Map();
@@ -268,8 +268,8 @@ for (const user of prodUsers) {
 // =========================================
 
 // Store production role details
-new aws.ssm.Parameter("production-roles", {
-    name: "/environments/production/roles",
+new aws.ssm.Parameter("prod-roles", {
+    name: "/environments/prod/roles",
     type: "SecureString",
     value: pulumi.output(roles).apply(rs => 
         JSON.stringify(Object.fromEntries(
@@ -285,7 +285,7 @@ new aws.ssm.Parameter("production-roles", {
     tags: {
         ManagedBy: "Pulumi",
         Component: "Roles",
-        Environment: "Production"
+        Environment: "Prod"
     }
 });
 
@@ -298,7 +298,7 @@ export default {
     // Production environment information
     environment: {
         name: environment,
-        ouId: organizationalUnits.apply(ous => ous.production?.id),
+        ouId: organizationalUnits.apply(ous => ous.prod?.id),
     },
 
     // Production roles

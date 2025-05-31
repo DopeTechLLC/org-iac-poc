@@ -67,10 +67,9 @@ export interface PolicyConfig {
 export interface RolesByEnvironment {
     prod: RoleConfig[];
     staging: RoleConfig[];
-    development: RoleConfig[];
+    dev: RoleConfig[];
     qa: RoleConfig[];
     sandbox1: RoleConfig[];
     sandbox2: RoleConfig[];
-    production: RoleConfig[];
     [key: string]: RoleConfig[];
 } 
