@@ -1,6 +1,4 @@
 config:
   aws:region: us-east-1
-  pulumi:tags:
-    value:
-      stack: staging
-      environment: staging 
+  pulumi:tags.stack: staging
+  pulumi:tags.environment: staging 

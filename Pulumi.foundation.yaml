@@ -1,6 +1,4 @@
 config:
   aws:region: us-east-1
-  pulumi:tags:
-    value:
-      stack: foundation
-      environment: global 
+  pulumi:tags.stack: foundation
+  pulumi:tags.environment: global 
