@@ -7,5 +7,4 @@ export {
     createIamPolicy,
     createServiceControlPolicy,
     createTagPolicy,
-    createPermissionBoundary
 } from './factory'; 

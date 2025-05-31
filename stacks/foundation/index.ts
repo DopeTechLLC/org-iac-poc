@@ -129,6 +129,7 @@ const tagPolicyOptions: TagPolicyOptions = {
     description: "Enforces tagging standards across the organization",
     type: PolicyType.TAG_POLICY,
     document: {
+        Version: "2012-10-17",
         tags: {
             Environment: {
                 tag_key: {
