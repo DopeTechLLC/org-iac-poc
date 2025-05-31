@@ -9,6 +9,60 @@
  */
 
 const policiesConfig = {
+  // Managed Policies
+  managedPolicies: [
+    {
+      name: "sandbox-environments-access",
+      document: {
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Sid: "Sandbox1Access",
+            Effect: "Allow",
+            Action: [
+              "ec2:Describe*",
+              "s3:List*",
+              "s3:Get*",
+              "dynamodb:List*",
+              "dynamodb:Describe*",
+              "lambda:List*",
+              "lambda:Get*",
+              "cloudwatch:Get*",
+              "cloudwatch:List*"
+            ],
+            Resource: "*",
+            Condition: {
+              StringEquals: {
+                "aws:ResourceTag/Environment": "sandbox1"
+              }
+            }
+          },
+          {
+            Sid: "Sandbox2Access",
+            Effect: "Allow",
+            Action: [
+              "ec2:Describe*",
+              "s3:List*",
+              "s3:Get*",
+              "dynamodb:List*",
+              "dynamodb:Describe*",
+              "lambda:List*",
+              "lambda:Get*",
+              "cloudwatch:Get*",
+              "cloudwatch:List*"
+            ],
+            Resource: "*",
+            Condition: {
+              StringEquals: {
+                "aws:ResourceTag/Environment": "sandbox2"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+
   // Tag Policy - Enforces mandatory tags across the organization
   tagPolicies: [
     {

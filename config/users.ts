@@ -44,6 +44,15 @@ const usersConfig = [
         email: "sysadmin@example.com",
         groups: ["admin"],
         description: "System administrator with full access"
+    },
+
+    // Direct Policy User - Sandbox Access
+    {
+        username: "sandbox-direct-access",
+        email: "sandbox-direct@example.com",
+        groups: [],  // No group membership
+        description: "User with direct policy access to sandbox environments",
+        managedPolicies: ["sandbox-environments-access"]  // Reference to custom managed policy
     }
 ];
 
