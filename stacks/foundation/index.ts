@@ -17,9 +17,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 // Import configurations
-import organizationConfig from "../../config/organization";
-import ouConfig from "../../config/organizationalUnits";
-import accountsConfig from "../../config/accounts";
+import organizationConfig from "../../shared/config/organization";
+import ouConfig from "../../shared/config/organizationalUnits";
+import accountsConfig from "../../shared/config/accounts";
 
 // =========================================
 // AWS Organization

@@ -18,10 +18,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 // Import configurations
-import policiesConfig from "../../../config/policies";
-import rolesConfig from "../../../config/roles";
-import groupsConfig from "../../../config/groups";
-import usersConfig from "../../../config/users";
+import policiesConfig from "../../../shared/config/policies";
+import rolesConfig from "../../../shared/config/roles";
+import groupsConfig from "../../../shared/config/groups";
+import usersConfig from "../../../shared/config/users";
 
 // Reference the foundation stack
 const foundation = new pulumi.StackReference("foundation");

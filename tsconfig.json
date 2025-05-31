@@ -18,8 +18,7 @@
     },
     "include": [
         "stacks/**/*.ts",
-        "shared/**/*.ts",
-        "config/**/*.ts"
+        "shared/**/*.ts"
     ],
     "exclude": [
         "node_modules"
