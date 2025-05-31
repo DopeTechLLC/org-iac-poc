@@ -1,5 +1,5 @@
 import * as aws from "@pulumi/aws";
-import { Input } from "@pulumi/pulumi";
+import { Input, output } from "@pulumi/pulumi";
 import { RoleOptions, RoleResult } from "./types";
 
 /**
@@ -9,23 +9,42 @@ import { RoleOptions, RoleResult } from "./types";
  * @returns The created Role resource.
  */
 export function createIamRole(options: RoleOptions): RoleResult {
-  const { name, assumeRolePolicy, managedPolicyArns = [], inlinePolicies = [] } = options;
-  const role = new aws.iam.Role(name, { assumeRolePolicy });
+  const { assumeRolePolicy, managedPolicyArns = [], inlinePolicies = [], ...roleArgs } = options;
+
+  // Create the role
+  const role = new aws.iam.Role("role", {
+    ...roleArgs,
+    assumeRolePolicy: typeof assumeRolePolicy === 'string' 
+      ? assumeRolePolicy 
+      : JSON.stringify(assumeRolePolicy)
+  });
 
   // Attach managed policies
-  managedPolicyArns.forEach((arn) => {
-    new aws.iam.RolePolicyAttachment(`${name}-attach-${arn.split('/').pop()}`, {
-      role: role.name,
-      policyArn: arn,
-    });
+  output(managedPolicyArns).apply(arns => {
+    if (arns) {
+      arns.forEach(arn => {
+        if (arn) {
+          new aws.iam.RolePolicyAttachment(`role-attach-${arn.split('/').pop()}`, {
+            role: role.name,
+            policyArn: arn,
+          });
+        }
+      });
+    }
   });
 
   // Create inline policies
-  inlinePolicies.forEach(({ name: policyName, policy }) => {
-    new aws.iam.RolePolicy(`${name}-inline-${policyName}`, {
-      role: role.name,
-      policy,
-    });
+  output(inlinePolicies).apply(policies => {
+    if (policies) {
+      policies.forEach(({ name: policyName, policy }) => {
+        if (policyName && policy) {
+          new aws.iam.RolePolicy(`role-inline-${policyName}`, {
+            role: role.name,
+            policy: typeof policy === 'string' ? policy : JSON.stringify(policy),
+          });
+        }
+      });
+    }
   });
 
   return role;
