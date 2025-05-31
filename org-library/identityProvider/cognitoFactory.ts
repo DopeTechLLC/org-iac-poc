@@ -25,10 +25,7 @@ export function createCognitoProvider(
   // Create the User Pool with required configuration
   const userPool = new aws.cognito.UserPool(name, {
     name: userPoolName || name,
-    schemas: schemas?.map(schema => ({
-      ...schema,
-      attributeDataType: schema.attributeDataType.toUpperCase()
-    })),
+    schemas,
     passwordPolicy,
     mfaConfiguration,
     adminCreateUserConfig,
@@ -45,7 +42,7 @@ export function createCognitoProvider(
     userPoolId: userPool.id,
     name: clientName,
     generateSecret: clientConfig?.generateSecret ?? false,
-    explicitAuthFlows: [
+    explicitAuthFlows: clientConfig?.explicitAuthFlows ?? [
       "ALLOW_USER_SRP_AUTH",
       "ALLOW_REFRESH_TOKEN_AUTH"
     ],

@@ -6,7 +6,7 @@ import { Input } from "@pulumi/pulumi";
  */
 export interface BaseIdentityProviderOptions {
   name: string;
-  tags?: { [key: string]: string };
+  tags?: { [key: string]: Input<string> };
 }
 
 /**
@@ -27,44 +27,26 @@ export interface UserPoolSchemaConfig {
  * Client configuration for Cognito User Pool
  */
 export interface UserPoolClientConfig {
-  allowedOauthFlows?: string[];
-  allowedOauthScopes?: string[];
-  callbackUrls?: string[];
-  defaultRedirectUri?: string;
-  generateSecret?: boolean;
-  logoutUrls?: string[];
-  supportedIdentityProviders?: string[];
+  allowedOauthFlows?: Input<string[]>;
+  allowedOauthScopes?: Input<string[]>;
+  callbackUrls?: Input<string[]>;
+  defaultRedirectUri?: Input<string>;
+  generateSecret?: Input<boolean>;
+  logoutUrls?: Input<string[]>;
+  supportedIdentityProviders?: Input<string[]>;
+  explicitAuthFlows?: Input<string[]>;
 }
 
 /**
  * Options for Cognito User Pool
  */
 export interface CognitoIdentityProviderOptions extends BaseIdentityProviderOptions {
-  userPoolName?: string;
-  schemas?: UserPoolSchemaConfig[];
-  passwordPolicy?: {
-    minimumLength?: number;
-    requireLowercase?: boolean;
-    requireNumbers?: boolean;
-    requireSymbols?: boolean;
-    requireUppercase?: boolean;
-    temporaryPasswordValidityDays?: number;
-  };
-  mfaConfiguration?: "OFF" | "ON" | "OPTIONAL";
-  adminCreateUserConfig?: {
-    allowAdminCreateUserOnly?: boolean;
-    inviteMessageTemplate?: {
-      emailMessage?: string;
-      emailSubject?: string;
-      smsMessage?: string;
-    };
-  };
-  emailConfiguration?: {
-    emailSendingAccount?: string;
-    fromEmailAddress?: string;
-    replyToEmailAddress?: string;
-    sourceArn?: string;
-  };
+  userPoolName?: Input<string>;
+  schemas?: Input<aws.types.input.cognito.UserPoolSchema>[];
+  passwordPolicy?: Input<aws.types.input.cognito.UserPoolPasswordPolicy>;
+  mfaConfiguration?: Input<"OFF" | "ON" | "OPTIONAL">;
+  adminCreateUserConfig?: Input<aws.types.input.cognito.UserPoolAdminCreateUserConfig>;
+  emailConfiguration?: Input<aws.types.input.cognito.UserPoolEmailConfiguration>;
   clientConfig?: UserPoolClientConfig;
 }
 
@@ -80,9 +62,9 @@ export interface CognitoProviderResult {
  * Options for Google SSO Provider
  */
 export interface GoogleSSOProviderOptions extends BaseIdentityProviderOptions {
-  clientIds: string[];
-  thumbprintList: string[];
-  assumeRoleArn?: string;
+  clientIds: Input<string>[];
+  thumbprintList: Input<string>[];
+  assumeRoleArn?: Input<string>;
   assumeRolePolicy?: aws.iam.PolicyDocument;
 }
 
