@@ -15,7 +15,8 @@ import { createPolicy } from "./org-library/policy";
 import { createIamGroup } from "./org-library/group";
 import { createIamUser } from "./org-library/user";
 import { PolicyType, PolicyEnvironment, SCPOptions, TagPolicyOptions } from "./org-library/policy/types";
-import { Input } from "@pulumi/pulumi";
+import { Input, Output } from "@pulumi/pulumi";
+import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import usersConfig from "./config/users";
 import policiesConfig from "./config/policies";
@@ -408,34 +409,117 @@ for (const [ouName, ouAccounts] of Object.entries(accountsConfig)) {
 }
 
 // =========================================
-// Exports
-// Export resource ARNs and IDs
+// Operational Data in SSM
+// Store important operational values
 // =========================================
 
-export const organizationId = organization.id;
-export const organizationArn = organization.arn;
-export const organizationalUnitsMap = Object.fromEntries(
-    Array.from(organizationalUnits.entries()).map(([name, ou]) => [name, ou.id])
-);
+// Store organization details
+new aws.ssm.Parameter("organization-details", {
+    name: "/organization/details",
+    type: "SecureString",
+    value: pulumi.output(organization).apply(org => 
+        JSON.stringify({
+            id: org.id,
+            rootId: org.roots[0].id,
+            arn: org.arn
+        })
+    ),
+    tags: {
+        ManagedBy: "Pulumi",
+        Component: "Organization"
+    }
+});
 
-export const managedPolicyArns = Object.fromEntries(
-    Array.from(managedPolicies.entries()).map(([name, policy]) => [name, policy.arn])
-);
+// Store account details
+new aws.ssm.Parameter("account-details", {
+    name: "/organization/accounts",
+    type: "SecureString",
+    value: pulumi.output(accounts).apply(accs => 
+        JSON.stringify(Object.fromEntries(
+            Array.from(accs.entries()).map(([name, account]) => [
+                name, 
+                {
+                    id: account.id,
+                    arn: account.arn,
+                    email: account.email
+                }
+            ])
+        ))
+    ),
+    tags: {
+        ManagedBy: "Pulumi",
+        Component: "Accounts"
+    }
+});
 
-export const environmentPolicyArns = {
-    prod: Object.fromEntries(Array.from(prodPolicies.entries()).map(([name, policy]) => [name, policy.arn])),
-    staging: Object.fromEntries(Array.from(stagingPolicies.entries()).map(([name, policy]) => [name, policy.arn])),
-    sandbox: Object.fromEntries(Array.from(sandboxPolicies.entries()).map(([name, policy]) => [name, policy.arn]))
+// Store cross-account role details
+new aws.ssm.Parameter("cross-account-roles", {
+    name: "/organization/cross-account-roles",
+    type: "SecureString",
+    value: pulumi.output(roles).apply(rs => 
+        JSON.stringify(Object.fromEntries(
+            Array.from(rs.entries())
+                .filter(([name]) => name.startsWith('cross-account-'))
+                .map(([name, role]) => [
+                    name,
+                    {
+                        arn: role.arn,
+                        name: role.name
+                    }
+                ])
+        ))
+    ),
+    tags: {
+        ManagedBy: "Pulumi",
+        Component: "CrossAccountRoles"
+    }
+});
+
+// =========================================
+// Stack Outputs
+// Only export values needed for cross-stack references
+// =========================================
+
+export = {
+    // Essential organization information
+    organization: {
+        id: organization.id,
+        rootId: organization.roots[0].id,
+        arn: organization.arn
+    },
+
+    // Cross-account access information (filtered)
+    crossAccountAccess: {
+        // Only export roles meant for cross-account access
+        roles: pulumi.output(roles).apply(rs => 
+            Object.fromEntries(
+                Array.from(rs.entries())
+                    .filter(([name]) => name.startsWith('cross-account-'))
+                    .map(([name, role]) => [name, role.arn])
+            )
+        ),
+
+        // Only export accounts that need to be referenced by other stacks
+        accounts: pulumi.output(accounts).apply(accs =>
+            Object.fromEntries(
+                Array.from(accs.entries())
+                    .filter(([name]) => name.startsWith('shared-'))
+                    .map(([name, account]) => [name, {
+                        id: account.id,
+                        arn: account.arn
+                    }])
+            )
+        )
+    },
+
+    // Export OU IDs only for those that need cross-stack references
+    sharedOUs: pulumi.output(organizationalUnits).apply(ous =>
+        Object.fromEntries(
+            Array.from(ous.entries())
+                .filter(([name]) => name.startsWith('shared-'))
+                .map(([name, ou]) => [name, ou.id])
+        )
+    )
 };
 
-export const groupArns = Object.fromEntries(
-    Array.from(groups.entries()).map(([name, group]) => [name, group.arn])
-);
-
-export const accountIds = Object.fromEntries(
-    Array.from(accounts.entries()).map(([name, account]) => [name, account.id])
-);
-
-export const roleArns = Object.fromEntries(
-    Array.from(roles.entries()).map(([name, role]) => [name, role.arn])
-);
+// Remove all other exports as they are now handled through SSM or stack outputs
