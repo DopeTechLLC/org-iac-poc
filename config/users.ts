@@ -1,32 +1,48 @@
 /**
  * Users configuration
  *
- * This file defines IAM users and their group memberships.
- * Each user corresponds to a specific role type defined in roles.ts
+ * This file defines IAM users and their access patterns.
+ * Users can have:
+ * 1. Group memberships for shared permissions
+ * 2. Direct managed policies for specific permissions
+ * 3. Role assignments for temporary elevated access
  */
 
-const usersConfig = [
-    // Production user - ReadOnly access
+interface UserConfig {
+    username: string;
+    email: string;
+    description: string;
+    groups?: string[];              // Optional group memberships
+    managedPolicies?: string[];     // Optional direct managed policies
+    assumeRoles?: string[];         // Optional additional roles to assume
+}
+
+const usersConfig: UserConfig[] = [
+    // Production user - ReadOnly access through both group and role
     {
         username: "prod-readonly-user",
         email: "prod-readonly@example.com",
         groups: ["prod-readonly"],
+        assumeRoles: ["prod-system-role"],
         description: "Production read-only access user"
     },
 
-    // QA Administrator
+    // QA Administrator with multiple access patterns
     {
         username: "qa-admin-user",
         email: "qa-admin@example.com",
-        groups: ["qa-admin"],
-        description: "QA environment administrator"
+        groups: ["qa-admin", "qa-team"],
+        assumeRoles: ["qa-admin-role", "staging-access-role"],
+        description: "QA environment administrator with staging access"
     },
 
-    // Sandbox1 Power User
+    // Sandbox1 Power User with direct policy and role access
     {
         username: "sandbox1-poweruser",
         email: "sandbox1-power@example.com",
         groups: ["sandbox1-limited"],
+        assumeRoles: ["sandbox1-limited-role"],
+        managedPolicies: ["sandbox1-utilities-access"],
         description: "Sandbox1 power user with limited access"
     },
 
@@ -35,14 +51,17 @@ const usersConfig = [
         username: "sandbox2-readonly",
         email: "sandbox2-readonly@example.com",
         groups: ["sandbox2-everyone"],
+        assumeRoles: ["sandbox2-everyone-role"],
         description: "Sandbox2 read-only access user"
     },
 
-    // System Administrator
+    // System Administrator with full access
     {
         username: "system-admin",
         email: "sysadmin@example.com",
-        groups: ["admin"],
+        groups: ["admin", "platform-team"],
+        assumeRoles: ["admin-role", "security-audit-role"],
+        managedPolicies: ["system-admin-access"],
         description: "System administrator with full access"
     },
 
@@ -50,10 +69,10 @@ const usersConfig = [
     {
         username: "sandbox-direct-access",
         email: "sandbox-direct@example.com",
-        groups: [],  // No group membership
-        description: "User with direct policy access to sandbox environments",
-        managedPolicies: ["sandbox-environments-access"]  // Reference to custom managed policy
+        managedPolicies: ["sandbox-environments-access"],
+        description: "User with direct policy access to sandbox environments"
     }
 ];
 
-export default usersConfig; 
+export default usersConfig;
+export type { UserConfig }; 

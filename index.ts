@@ -312,6 +312,7 @@ for (const [ouName, ouRoles] of Object.entries(rolesConfig)) {
 
 // Create users from config
 for (const user of usersConfig) {
+    // Create the IAM user
     const iamUser = createIamUser(user.username, {
         name: user.username,
         path: "/users/",
@@ -323,7 +324,15 @@ for (const user of usersConfig) {
         forceDestroy: true
     });
 
-    // If user has direct managed policies, attach them
+    // 1. Handle Group Memberships
+    if (user.groups && user.groups.length > 0) {
+        new aws.iam.UserGroupMembership(`${user.username}-groups`, {
+            user: iamUser.name,
+            groups: user.groups
+        });
+    }
+
+    // 2. Handle Direct Managed Policies
     if (user.managedPolicies) {
         for (const policyName of user.managedPolicies) {
             const policy = managedPolicies.get(policyName);
@@ -334,42 +343,47 @@ for (const user of usersConfig) {
                 });
             }
         }
-    } else {
-        // For users without direct policies, create role assignments based on their groups
-        for (const groupName of user.groups) {
-            let roleName: string | undefined;
-            
-            // Map group names to corresponding roles
-            if (groupName === 'prod-readonly') {
-                roleName = 'prod-system-role';
-            } else if (groupName === 'qa-admin') {
-                roleName = 'qa-admin-role';
-            } else if (groupName === 'sandbox1-limited') {
-                roleName = 'sandbox1-limited-role';
-            } else if (groupName === 'sandbox2-everyone') {
-                roleName = 'sandbox2-everyone-role';
-            }
+    }
 
-            if (roleName) {
-                const role = roles.get(roleName);
-                if (role) {
-                    // Create a policy that allows the user to assume the role
-                    const assumeRolePolicy = {
-                        Version: "2012-10-17",
-                        Statement: [{
-                            Effect: "Allow",
-                            Action: "sts:AssumeRole",
-                            Resource: role.arn
-                        }]
-                    };
+    // 3. Handle Role Assignments
+    // Collect all roles the user should be able to assume
+    const rolesToAssume = new Set<string>();
 
-                    // Attach the assume role policy to the user
-                    new aws.iam.UserPolicy(`${user.username}-assume-${roleName}`, {
-                        user: iamUser.name,
-                        policy: JSON.stringify(assumeRolePolicy)
-                    });
+    // Add explicitly assigned roles
+    if (user.assumeRoles) {
+        user.assumeRoles.forEach(role => rolesToAssume.add(role));
+    }
+
+    // Create assume role policies for all roles
+    for (const roleName of rolesToAssume) {
+        const role = roles.get(roleName);
+        if (role) {
+            // Create assume role policy using policy factory
+            const userAssumeRolePolicy = createPolicy({
+                name: `${user.username}-assume-${roleName}-policy`,
+                type: PolicyType.IAM,
+                description: `Policy allowing ${user.username} to assume role ${roleName}`,
+                document: {
+                    Version: "2012-10-17" as const,
+                    Statement: [{
+                        Effect: "Allow",
+                        Action: "sts:AssumeRole",
+                        Resource: role.arn
+                    }]
+                },
+                path: "/users/assume-role-policies/",
+                tags: {
+                    User: user.username,
+                    Role: roleName,
+                    ManagedBy: "pulumi"
                 }
-            }
+            });
+
+            // Attach the assume role policy to the user
+            new aws.iam.UserPolicyAttachment(`${user.username}-assume-${roleName}`, {
+                user: iamUser.name,
+                policyArn: userAssumeRolePolicy.arn
+            });
         }
     }
 }
