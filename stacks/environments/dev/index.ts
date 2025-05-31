@@ -24,7 +24,7 @@ import groupsConfig from "../../../shared/config/groups";
 import usersConfig from "../../../shared/config/users";
 
 // Reference the foundation stack
-const foundation = new pulumi.StackReference("foundation");
+const foundation = new pulumi.StackReference("ali-dopetech-org/aws-org-infrastructure/foundation");
 
 // Get organization information from foundation stack
 const organization = foundation.getOutput("organization");
@@ -100,8 +100,33 @@ const devGroupsConfig = groupsConfig.filter(group =>
 // Create development groups
 const groups = new Map();
 for (const groupConfig of devGroupsConfig) {
+    // Determine which policies to attach to this group
+    let managedPolicyArns = [];
+    
+    // Attach appropriate policies based on group name
+    if (groupConfig.name === "sandbox1-limited") {
+        // Find the sandbox environments access policy
+        const sandboxPolicy = devPolicies.get("sandbox-environments-access");
+        if (sandboxPolicy) {
+            managedPolicyArns.push(sandboxPolicy.arn);
+        }
+    } else if (groupConfig.name === "dev-developers") {
+        // Find the sandbox full access policy
+        const devPolicy = devPolicies.get("sandbox1-full-access");
+        if (devPolicy) {
+            managedPolicyArns.push(devPolicy.arn);
+        }
+        // You could also add AWS managed policies like ReadOnlyAccess
+        managedPolicyArns.push("arn:aws:iam::aws:policy/ReadOnlyAccess");
+    } else if (groupConfig.name === "org-everyone") {
+        // Maybe just give read-only access to this group
+        managedPolicyArns.push("arn:aws:iam::aws:policy/ReadOnlyAccess");
+    }
+    
+    // Create the group with policy attachments
     const group = createIamGroup(groupConfig.name, {
-        path: "/groups/"
+        path: "/groups/",
+        managedPolicyArns: managedPolicyArns
     });
     
     groups.set(groupConfig.name, group);
@@ -204,9 +229,18 @@ for (const user of devUsers) {
         groups.has(group)) : [];
     
     if (userDevGroups.length > 0) {
-        new aws.iam.UserGroupMembership(`${user.username}-groups`, {
-            user: iamUser.name,
-            groups: userDevGroups
+        // Get all the actual group objects for Pulumi's implicit dependency tracking
+        const groupResources = userDevGroups.map(groupName => groups.get(groupName));
+        
+        // Use apply to create dependency chain and get actual group names
+        pulumi.all(groupResources).apply(resolvedGroups => {
+            // Extract the actual resource names that were created with suffixes
+            const actualGroupNames = resolvedGroups.map(group => group.name);
+            
+            return new aws.iam.UserGroupMembership(`${user.username}-groups`, {
+                user: iamUser.name,
+                groups: actualGroupNames
+            });
         });
     }
 
@@ -272,17 +306,19 @@ for (const user of devUsers) {
 new aws.ssm.Parameter("dev-roles", {
     name: "/environments/dev/roles",
     type: "SecureString",
-    value: pulumi.output(roles).apply(rs => 
-        JSON.stringify(Object.fromEntries(
-            Array.from(rs.entries()).map(([name, role]) => [
+    value: pulumi.output(roles).apply(rs => {
+        // Convert Map to array of entries
+        const entries = Array.from(rs instanceof Map ? rs.entries() : []);
+        return JSON.stringify(Object.fromEntries(
+            entries.map(([name, role]) => [
                 name, 
                 {
                     arn: role.arn,
                     name: role.name
                 }
             ])
-        ))
-    ),
+        ));
+    }),
     tags: {
         ManagedBy: "Pulumi",
         Component: "Roles",
@@ -299,47 +335,50 @@ export default {
     // Development environment information
     environment: {
         name: environment,
-        ouId: organizationalUnits.apply(ous => ous.dev?.id),
+        ouId: organizationalUnits.apply(ous => ous && ous.dev ? ous.dev.id : undefined),
     },
 
     // Development roles
-    roles: pulumi.output(roles).apply(rs => 
-        Object.fromEntries(
-            Array.from(rs.entries()).map(([name, role]) => [
+    roles: pulumi.output(roles).apply(rs => {
+        const entries = Array.from(rs instanceof Map ? rs.entries() : []);
+        return Object.fromEntries(
+            entries.map(([name, role]) => [
                 name, 
                 {
                     arn: role.arn,
                     name: role.name
                 }
             ])
-        )
-    ),
+        );
+    }),
 
     // Development policies
     policies: {
         // Managed policies
-        managed: pulumi.output(managedPolicies).apply(ps => 
-            Object.fromEntries(
-                Array.from(ps.entries()).map(([name, policy]) => [
+        managed: pulumi.output(managedPolicies).apply(ps => {
+            const entries = Array.from(ps instanceof Map ? ps.entries() : []);
+            return Object.fromEntries(
+                entries.map(([name, policy]) => [
                     name, 
                     {
                         arn: policy.arn,
                         name: policy.name
                     }
                 ])
-            )
-        ),
+            );
+        }),
         // Development-specific policies
-        environment: pulumi.output(devPolicies).apply(ps => 
-            Object.fromEntries(
-                Array.from(ps.entries()).map(([name, policy]) => [
+        environment: pulumi.output(devPolicies).apply(ps => {
+            const entries = Array.from(ps instanceof Map ? ps.entries() : []);
+            return Object.fromEntries(
+                entries.map(([name, policy]) => [
                     name, 
                     {
                         arn: policy.arn,
                         name: policy.name
                     }
                 ])
-            )
-        )
+            );
+        })
     }
 }; 

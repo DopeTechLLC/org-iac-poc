@@ -27,15 +27,18 @@ export function createIamGroup(
         ...groupArgs
     });
 
-    // Attach managed policies to the group
-    managedPolicyArns.forEach((policyArn: Input<string>) => {
-        new aws.iam.GroupPolicyAttachment(
-            `${name}-attach-${output(policyArn).apply(arn => arn.split("/").pop())}`,
-            {
-                group: group.name,
-                policyArn,
-            }
-        );
+
+    managedPolicyArns.forEach((policyArn: Input<string>, index: number) => {
+        output(policyArn).apply(arn => {
+            const policyName = arn.split("/").pop() || `policy-${index}`;
+            return new aws.iam.GroupPolicyAttachment(
+                `${name}-attach-${policyName}`,
+                {
+                    group: group.name,
+                    policyArn,
+                }
+            );
+        });
     });
 
     return group;

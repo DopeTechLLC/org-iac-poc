@@ -14,7 +14,8 @@ const organizationConfig = {
       "config.amazonaws.com",
       "ram.amazonaws.com",
       "tagpolicies.tag.amazonaws.com",
-      "ipam.amazonaws.com"
+      "ipam.amazonaws.com",
+      "sso.amazonaws.com"
     ],
     awsManagedPolicyTypes: [
       "SERVICE_CONTROL_POLICY",

@@ -33,6 +33,15 @@ const organization = createOrganization(organizationConfig.name, {
     featureSet: organizationConfig.orgArgs.featureSet
 });
 
+
+const ssoInstance = aws.ssoadmin.getInstances({});
+
+const identityCenterApp = new aws.ssoadmin.Application("identityCenterApp", {
+    name: "identity-center-app",
+    applicationProviderArn: "arn:aws:sso::aws:applicationProvider/custom",
+    instanceArn: ssoInstance.then(instances => instances.arns?.[0])
+});
+
 // Create Organizational Units
 const organizationalUnits = new Map();
 
