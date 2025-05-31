@@ -5,7 +5,8 @@ import {
   PolicyResult, 
   SCPOptions, 
   TagPolicyOptions,
-  PolicyType
+  PolicyType,
+  IAMPolicyOptions
 } from "./types";
 
 /**
@@ -14,12 +15,12 @@ import {
  * @param options - Configuration options for the IAM Policy.
  * @returns The created Policy resource and its identifiers.
  */
-export function createIamPolicy(options: PolicyOptions): PolicyResult {
+export function createIamPolicy(options: IAMPolicyOptions): PolicyResult {
   const { name, description, document, path, tags } = options;
 
   const policy = new aws.iam.Policy(name, {
     description,
-    policy: document,
+    policy: JSON.stringify(document),
     path,
     tags: {
       ...tags,
@@ -101,33 +102,6 @@ export function createTagPolicy(options: TagPolicyOptions): PolicyResult {
 }
 
 /**
- * Creates a Permission Boundary Policy.
- * 
- * @param options - Configuration options for the Permission Boundary.
- * @returns The created Policy resource and its identifiers.
- */
-export function createPermissionBoundary(options: PolicyOptions): PolicyResult {
-  const { name, description, document, path, tags } = options;
-
-  const policy = new aws.iam.Policy(name, {
-    description,
-    policy: document,
-    path: path || "/permission-boundaries/",
-    tags: {
-      ...tags,
-      Type: "PermissionBoundary",
-      ManagedBy: "pulumi"
-    }
-  });
-
-  return {
-    policy,
-    arn: policy.arn,
-    id: policy.id
-  };
-}
-
-/**
  * Factory function that creates a policy based on its type.
  * 
  * @param options - Configuration options for the policy.
@@ -138,14 +112,13 @@ export function createPolicy(
 ): PolicyResult {
   switch (options.type) {
     case PolicyType.IAM:
-      return createIamPolicy(options);
-    case PolicyType.SCP:
+      return createIamPolicy(options as IAMPolicyOptions);
+    case PolicyType.SERVICE_CONTROL_POLICY:
       return createServiceControlPolicy(options as SCPOptions);
-    case PolicyType.TAG:
+    case PolicyType.TAG_POLICY:
       return createTagPolicy(options as TagPolicyOptions);
-    case PolicyType.PERMISSION_BOUNDARY:
-      return createPermissionBoundary(options);
     default:
-      throw new Error(`Unsupported policy type: ${options.type}`);
+      const _exhaustiveCheck: never = options;
+      throw new Error(`Unsupported policy type: ${(options as any).type}`);
   }
 } 
