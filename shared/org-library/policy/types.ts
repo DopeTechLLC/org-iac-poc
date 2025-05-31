@@ -54,7 +54,6 @@ export interface SCPOptions extends BasePolicyOptions {
  * AWS Organizations Tag Policy document structure
  */
 export interface TagPolicyDocument {
-    Version: string;
     tags: {
         [tagName: string]: {
             tag_key?: {
@@ -62,7 +61,7 @@ export interface TagPolicyDocument {
                 "@@operators_allowed_for_child_policies"?: string[];
             };
             tag_value?: {
-                "@@assign"?: string[];
+                "@@allowlist"?: string[];
                 "@@operators_allowed_for_child_policies"?: string[];
             };
             enforced_for?: {

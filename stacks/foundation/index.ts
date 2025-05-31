@@ -123,44 +123,21 @@ const sandboxSCPOptions: SCPOptions = {
 };
 
 // Create Tag Policy
-const tagPolicyOptions: TagPolicyOptions = {
+const tagPolicyOptions: any = {
     name: "resource-tag-policy",
     path: "/tag-policies/",
     description: "Enforces tagging standards across the organization",
     type: PolicyType.TAG_POLICY,
     document: {
-        Version: "2012-10-17",
-        tags: {
-            Environment: {
-                tag_key: {
-                    "@@assign": "Environment"
-                },
-                tag_value: {
+        "tags": {
+            "Environment": {
+                "tag_value": {
                     "@@assign": ["prod", "staging", "sandbox"]
-                },
-                enforced_for: {
-                    "@@assign": [
-                        "ec2:instance",
-                        "ec2:volume",
-                        "s3:bucket",
-                        "rds:db"
-                    ]
                 }
             },
-            Owner: {
-                tag_key: {
-                    "@@assign": "Owner"
-                },
-                tag_value: {
-                    "@@assign": ["*.com"]
-                },
-                enforced_for: {
-                    "@@assign": [
-                        "ec2:instance",
-                        "ec2:volume",
-                        "s3:bucket",
-                        "rds:db"
-                    ]
+            "Owner": {
+                "tag_value": {
+                    "@@assign": ["*gmail.com"]
                 }
             }
         }
@@ -168,8 +145,8 @@ const tagPolicyOptions: TagPolicyOptions = {
     targetId: organization.id,
     tags: {
         Type: "TagPolicy",
-        ManagedBy: "Pulumi"
-    }
+        ManagedBy: "Pulumi",
+    },
 };
 
 const productionSCP = createPolicy(productionSCPOptions);
