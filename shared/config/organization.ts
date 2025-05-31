@@ -20,8 +20,7 @@ const organizationConfig = {
       "SERVICE_CONTROL_POLICY",
       "TAG_POLICY"
     ],
-    featureSet: "ALL",
-    iamUserAccessToBilling: "ALLOW"
+    featureSet: "ALL"
   }
 };
 

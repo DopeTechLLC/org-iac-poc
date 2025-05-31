@@ -86,7 +86,7 @@ const productionSCPOptions: SCPOptions = {
             Resource: "*"
         }]
     },
-    targetId: organizationalUnits.get("production")?.id,
+    targetId: organizationalUnits.get("prod")?.id,
     tags: {
         Environment: "Production",
         ManagedBy: "Pulumi",
@@ -114,7 +114,7 @@ const sandboxSCPOptions: SCPOptions = {
             Resource: "*"
         }]
     },
-    targetId: organizationalUnits.get("sandbox")?.id,
+    targetId: organizationalUnits.get("sandbox1")?.id,
     tags: {
         Environment: "Sandbox",
         ManagedBy: "Pulumi",
@@ -216,9 +216,9 @@ new aws.ssm.Parameter("organization-details", {
 new aws.ssm.Parameter("account-details", {
     name: "/organization/accounts",
     type: "SecureString",
-    value: pulumi.output(accounts).apply(accs => 
+    value: pulumi.all(Array.from(accounts.entries())).apply(accountEntries => 
         JSON.stringify(Object.fromEntries(
-            Array.from(accs.entries()).map(([name, account]) => [
+            accountEntries.map(([name, account]) => [
                 name, 
                 {
                     id: account.id,
@@ -248,9 +248,9 @@ export default {
     },
     
     // Export all OUs for reference by environment stacks
-    organizationalUnits: pulumi.output(organizationalUnits).apply(ous =>
+    organizationalUnits: pulumi.all(Array.from(organizationalUnits.entries())).apply(ouEntries =>
         Object.fromEntries(
-            Array.from(ous.entries()).map(([name, ou]) => [
+            ouEntries.map(([name, ou]) => [
                 name, 
                 {
                     id: ou.id,
@@ -262,9 +262,9 @@ export default {
     ),
     
     // Export all accounts for reference by environment stacks
-    accounts: pulumi.output(accounts).apply(accs =>
+    accounts: pulumi.all(Array.from(accounts.entries())).apply(accountEntries =>
         Object.fromEntries(
-            Array.from(accs.entries()).map(([name, account]) => [
+            accountEntries.map(([name, account]) => [
                 name, 
                 {
                     id: account.id,
