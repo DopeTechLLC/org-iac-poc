@@ -5,11 +5,6 @@ runtime:
   options:
     packagemanager: yarn
 main: ./stacks/foundation
-config:
-  pulumi:tags.pulumi:template: aws-typescript
-  pulumi:tags.component: aws-organization
-  pulumi:tags.team: platform
-  pulumi:tags.managedBy: pulumi
 stacks:
   foundation: # Foundation stack for organization-wide resources
     description: AWS Organization foundation components (Organization, OUs, SCPs, Accounts)

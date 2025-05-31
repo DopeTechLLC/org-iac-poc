@@ -1,4 +1,2 @@
 config:
-  aws:region: us-east-1
-  pulumi:tags.stack: prod
-  pulumi:tags.environment: production 
+  aws:region: us-east-1 
