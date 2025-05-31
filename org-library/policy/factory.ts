@@ -5,8 +5,7 @@ import {
   PolicyResult, 
   SCPOptions, 
   TagPolicyOptions,
-  PolicyType,
-  PolicyDocument
+  PolicyType
 } from "./types";
 
 /**
@@ -20,7 +19,7 @@ export function createIamPolicy(options: PolicyOptions): PolicyResult {
 
   const policy = new aws.iam.Policy(name, {
     description,
-    policy: JSON.stringify(document),
+    policy: document,
     path,
     tags: {
       ...tags,
@@ -74,30 +73,25 @@ export function createServiceControlPolicy(options: SCPOptions): PolicyResult {
  * @returns The created Policy resource and its identifiers.
  */
 export function createTagPolicy(options: TagPolicyOptions): PolicyResult {
-  const { name, description, document, enforceFor, requiredTags, allowedValues } = options;
+  const { name, description, enforceFor, requiredTags, allowedValues } = options;
 
-  // Create tag policy document
-  const tagPolicyDocument: PolicyDocument = {
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Sid: "EnforceTagPresence",
-        Effect: "Deny",
-        Action: "*",
-        Resource: "*",
-        Condition: {
-          "Null": requiredTags.reduce((acc, tag) => ({
-            ...acc,
-            [`aws:RequestTag/${tag}`]: "true"
-          }), {})
-        }
-      }
-    ]
-  };
+  // Create tag policy document using Pulumi types
+  let statements: aws.iam.PolicyStatement[] = [{
+    Sid: "EnforceTagPresence",
+    Effect: "Deny",
+    Action: "*",
+    Resource: "*",
+    Condition: {
+      "Null": requiredTags.reduce((acc, tag) => ({
+        ...acc,
+        [`aws:RequestTag/${tag}`]: "true"
+      }), {})
+    }
+  }];
 
   // Add allowed values if specified
   if (allowedValues) {
-    tagPolicyDocument.Statement.push({
+    statements = [...statements, {
       Sid: "EnforceTagValues",
       Effect: "Deny",
       Action: "*",
@@ -111,8 +105,13 @@ export function createTagPolicy(options: TagPolicyOptions): PolicyResult {
           {}
         )
       }
-    });
+    }];
   }
+
+  const tagPolicyDocument: aws.iam.PolicyDocument = {
+    Version: "2012-10-17",
+    Statement: statements
+  };
 
   // Create the policy
   const policy = new aws.organizations.Policy(name, {
@@ -123,7 +122,7 @@ export function createTagPolicy(options: TagPolicyOptions): PolicyResult {
   });
 
   return {
-    policy: policy as unknown as aws.iam.Policy, // Type cast for consistency
+    policy: policy as unknown as aws.iam.Policy,
     arn: policy.arn,
     id: policy.id
   };
@@ -140,7 +139,7 @@ export function createPermissionBoundary(options: PolicyOptions): PolicyResult {
 
   const policy = new aws.iam.Policy(name, {
     description,
-    policy: JSON.stringify(document),
+    policy: document,
     path: path || "/permission-boundaries/",
     tags: {
       ...tags,
