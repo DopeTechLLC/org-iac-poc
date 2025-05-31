@@ -11,7 +11,7 @@
 import { createOrganization } from "../../shared/org-library/organization";
 import { createOrganizationalUnit } from "../../shared/org-library/organizationalUnit";
 import { createPolicy } from "../../shared/org-library/policy";
-import { PolicyType, SCPOptions, TagPolicyOptions } from "../../shared/org-library/policy/types";
+import { PolicyType, SCPOptions, TagPolicyDocument, TagPolicyOptions } from "../../shared/org-library/policy/types";
 import { Input, Output } from "@pulumi/pulumi";
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
@@ -123,7 +123,7 @@ const sandboxSCPOptions: SCPOptions = {
 };
 
 // Create Tag Policy
-const tagPolicyOptions: any = {
+const tagPolicyOptions: TagPolicyOptions = {
     name: "resource-tag-policy",
     path: "/tag-policies/",
     description: "Enforces tagging standards across the organization",
@@ -142,7 +142,7 @@ const tagPolicyOptions: any = {
             }
         }
     },
-    targetId: organization.id,
+    targetId: organization.roots[0].id,
     tags: {
         Type: "TagPolicy",
         ManagedBy: "Pulumi",

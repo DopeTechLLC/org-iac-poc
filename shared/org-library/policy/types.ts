@@ -61,6 +61,7 @@ export interface TagPolicyDocument {
                 "@@operators_allowed_for_child_policies"?: string[];
             };
             tag_value?: {
+                "@@assign"?: string[];
                 "@@allowlist"?: string[];
                 "@@operators_allowed_for_child_policies"?: string[];
             };
