@@ -46,11 +46,14 @@ export interface SCPOptions extends Omit<PolicyOptions, 'type'> {
 /**
  * Options specific to Tag Policies
  */
-export interface TagPolicyOptions extends Omit<PolicyOptions, 'type'> {
+export interface TagPolicyOptions extends Omit<PolicyOptions, 'type' | 'document'> {
     type: PolicyType.TAG;
-    enforceFor: Input<string>[];  // List of resource types to enforce tags on
-    requiredTags: Input<string>[];  // List of required tag keys
-    allowedValues?: Record<string, Input<string>[]>;  // Allowed values for specific tags
+    document: any; // Allow custom tag policy document structure
+    targetId?: Input<string>; // The Organization, OU, or Account ID to attach the policy to
+    // Optional legacy fields for backward compatibility
+    enforceFor?: Input<string>[];
+    requiredTags?: Input<string>[];
+    allowedValues?: Record<string, Input<string>[]>;
 }
 
 /**

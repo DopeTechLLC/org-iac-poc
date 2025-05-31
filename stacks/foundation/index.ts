@@ -129,38 +129,42 @@ const tagPolicyOptions: TagPolicyOptions = {
     description: "Enforces tagging standards across the organization",
     type: PolicyType.TAG,
     document: {
-        Version: "2012-10-17",
-        Statement: [{
-            Sid: "RequireEnvironmentAndOwnerTags",
-            Effect: "Deny",
-            Action: [
-                "ec2:RunInstances",
-                "ec2:CreateVolume",
-                "s3:CreateBucket",
-                "rds:CreateDBInstance"
-            ],
-            Resource: "*",
-            Condition: {
-                StringNotLike: {
-                    "aws:RequestTag/Environment": ["prod", "staging", "sandbox"],
-                    "aws:RequestTag/Owner": ["*@dopetech.io"]
+        tags: {
+            Environment: {
+                tag_key: {
+                    "@@assign": "Environment"
+                },
+                tag_value: {
+                    "@@assign": ["prod", "staging", "sandbox"]
+                },
+                enforced_for: {
+                    "@@assign": [
+                        "ec2:instance",
+                        "ec2:volume",
+                        "s3:bucket",
+                        "rds:db"
+                    ]
+                }
+            },
+            Owner: {
+                tag_key: {
+                    "@@assign": "Owner"
+                },
+                tag_value: {
+                    "@@assign": ["*.com"]
+                },
+                enforced_for: {
+                    "@@assign": [
+                        "ec2:instance",
+                        "ec2:volume",
+                        "s3:bucket",
+                        "rds:db"
+                    ]
                 }
             }
-        }]
+        }
     },
-    enforceFor: [
-        "ec2:*",
-        "s3:*",
-        "rds:*"
-    ],
-    requiredTags: [
-        "Environment",
-        "Owner"
-    ],
-    allowedValues: {
-        Environment: ["prod", "staging", "sandbox"],
-        Owner: ["*@dopetech.io"]
-    },
+    targetId: organization.id,
     tags: {
         Type: "TagPolicy",
         ManagedBy: "Pulumi"
