@@ -72,7 +72,7 @@ const productionSCPOptions: SCPOptions = {
     name: "production-scp",
     path: "/service-control-policies/",
     description: "Production environment service control policy",
-    type: PolicyType.SCP,
+    type: PolicyType.SERVICE_CONTROL_POLICY,
     document: {
         Version: "2012-10-17",
         Statement: [{
@@ -98,7 +98,7 @@ const sandboxSCPOptions: SCPOptions = {
     name: "sandbox-scp",
     path: "/service-control-policies/",
     description: "Sandbox environment service control policy",
-    type: PolicyType.SCP,
+    type: PolicyType.SERVICE_CONTROL_POLICY,
     document: {
         Version: "2012-10-17",
         Statement: [{
@@ -127,7 +127,7 @@ const tagPolicyOptions: TagPolicyOptions = {
     name: "resource-tag-policy",
     path: "/tag-policies/",
     description: "Enforces tagging standards across the organization",
-    type: PolicyType.TAG,
+    type: PolicyType.TAG_POLICY,
     document: {
         tags: {
             Environment: {

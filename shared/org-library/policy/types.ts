@@ -2,13 +2,13 @@ import * as aws from "@pulumi/aws";
 import { Input } from "@pulumi/pulumi";
 
 /**
- * Types of policies supported
+ * Types of policies supported by AWS Organizations
+ * Uses the official AWS Organizations policy type strings
  */
 export enum PolicyType {
-    IAM = "iam",
-    SCP = "scp",
-    TAG = "tag",
-    PERMISSION_BOUNDARY = "permission_boundary"
+    IAM = "IAM",
+    SERVICE_CONTROL_POLICY = "SERVICE_CONTROL_POLICY", 
+    TAG_POLICY = "TAG_POLICY"
 }
 
 /**
@@ -23,45 +23,80 @@ export enum PolicyEnvironment {
 }
 
 /**
- * Enhanced options for creating an IAM Policy
+ * Base options for all policy types
  */
-export interface PolicyOptions {
+export interface BasePolicyOptions {
     name: string;
     description?: string;
-    type: PolicyType;
-    environment?: PolicyEnvironment;
-    document: aws.iam.PolicyDocument;
     path?: string;
     tags?: { [key: string]: Input<string> };
+    environment?: PolicyEnvironment;
 }
 
 /**
- * Options specific to Service Control Policies
+ * Options for creating an IAM Policy
  */
-export interface SCPOptions extends Omit<PolicyOptions, 'type'> {
-    type: PolicyType.SCP;
+export interface IAMPolicyOptions extends BasePolicyOptions {
+    type: PolicyType.IAM;
+    document: aws.iam.PolicyDocument;
+}
+
+/**
+ * Options for Service Control Policies
+ */
+export interface SCPOptions extends BasePolicyOptions {
+    type: PolicyType.SERVICE_CONTROL_POLICY;
+    document: aws.iam.PolicyDocument;
     targetId: Input<string>;  // The Organization, OU, or Account ID to attach the policy to
 }
 
 /**
- * Options specific to Tag Policies
+ * AWS Organizations Tag Policy document structure
  */
-export interface TagPolicyOptions extends Omit<PolicyOptions, 'type' | 'document'> {
-    type: PolicyType.TAG;
-    document: any; // Allow custom tag policy document structure
-    targetId?: Input<string>; // The Organization, OU, or Account ID to attach the policy to
-    // Optional legacy fields for backward compatibility
-    enforceFor?: Input<string>[];
-    requiredTags?: Input<string>[];
-    allowedValues?: Record<string, Input<string>[]>;
+export interface TagPolicyDocument {
+    Version: string;
+    tags: {
+        [tagName: string]: {
+            tag_key?: {
+                "@@assign"?: string;
+                "@@operators_allowed_for_child_policies"?: string[];
+            };
+            tag_value?: {
+                "@@assign"?: string[];
+                "@@operators_allowed_for_child_policies"?: string[];
+            };
+            enforced_for?: {
+                "@@assign"?: string[];
+                "@@operators_allowed_for_child_policies"?: string[];
+            };
+        };
+    };
 }
+
+/**
+ * Options for Tag Policies
+ */
+export interface TagPolicyOptions extends BasePolicyOptions {
+    type: PolicyType.TAG_POLICY;
+    document: TagPolicyDocument;
+    targetId?: Input<string>; // The Organization, OU, or Account ID to attach the policy to
+}
+
+
+/**
+ * Union type for all policy options
+ */
+export type PolicyOptions = 
+    | IAMPolicyOptions 
+    | SCPOptions 
+    | TagPolicyOptions
 
 /**
  * Return type for policy creation functions
  */
 export interface PolicyResult {
-    policy: aws.iam.Policy;
+    policy: aws.iam.Policy | aws.organizations.Policy;
     arn: Input<string>;
     id: Input<string>;
-    attachmentId?: Input<string>;  // For SCPs and other attachable policies
-} 
+    attachmentId?: Input<string>;  // For Organization policies that are attached
+}
